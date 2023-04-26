@@ -26,7 +26,7 @@ finalDBPath		= "../preprocessor/componentDB/"
 metaPath		= "../preprocessor/metaInfos/"
 aveFuncPath		= metaPath + "aveFuncs"
 weightPath		= metaPath + "weights/"
-ctagsPath		= "/usr/local/bin/ctags"
+ctagsPath		= "/home/nryet/Downloads/uctags-2023.04.03-linux-x86_64/bin/ctags"
 
 
 shouldMake 	= [resultPath]
@@ -60,7 +60,7 @@ def normalize(string):
 def hashing(repoPath):
 	# This function is for hashing C/C++ functions
 	# Only consider ".c", ".cc", and ".cpp" files
-	possible = (".c", ".cc", ".cpp")
+	possible = (".java")
 	
 	fileCnt  = 0
 	funcCnt  = 0
@@ -75,14 +75,14 @@ def hashing(repoPath):
 			if file.endswith(possible):
 				try:
 					# Execute Ctgas command
-					functionList 	= subprocess.check_output(ctagsPath + ' -f - --kinds-C=* --fields=neKSt "' + filePath + '"', stderr=subprocess.STDOUT, shell=True).decode()
+					functionList 	= subprocess.check_output(ctagsPath + ' -f - --kinds-java=* --fields=neKSt "' + filePath + '"', stderr=subprocess.STDOUT, shell=True).decode()
 
 					f = open(filePath, 'r', encoding = "UTF-8")
 
 					# For parsing functions
 					lines 		= f.readlines()
 					allFuncs 	= str(functionList).split('\n')
-					func   		= re.compile(r'(function)')
+					func   		= re.compile(r'(method)')
 					number 		= re.compile(r'(\d+)')
 					funcSearch	= re.compile(r'{([\S\s]*)}')
 					tmpString	= ""
@@ -95,9 +95,9 @@ def hashing(repoPath):
 						elemList 	= elemList.split('\t')
 						funcBody 	= ""
 
-						if i != '' and len(elemList) >= 8 and func.fullmatch(elemList[3]):
+						if i != '' and len(elemList) >= 7 and func.fullmatch(elemList[3]):
 							funcStartLine 	 = int(number.search(elemList[4]).group(0))
-							funcEndLine 	 = int(number.search(elemList[7]).group(0))
+							funcEndLine 	 = int(number.search(elemList[6]).group(0))
 
 							tmpString	= ""
 							tmpString	= tmpString.join(lines[funcStartLine - 1 : funcEndLine])

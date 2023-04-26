@@ -14,11 +14,11 @@ import tlsh # Please intall python-tlsh
 """GLOBALS"""
 
 currentPath	= os.getcwd()
-gitCloneURLS= currentPath + "/sample" 			# Please change to the correct file (the "sample" file contains only 10 git-clone urls)
+project_root= currentPath + "/repo_src/" 			# Please change to the correct file (the "sample" file contains only 10 git-clone urls)
 clonePath 	= currentPath + "/repo_src/"		# Default path
 tagDatePath = currentPath + "/repo_date/"		# Default path
 resultPath	= currentPath + "/repo_functions/"	# Default path
-ctagsPath	= "/usr/local/bin/ctags" 			# Ctags binary path (please specify your own ctags path)
+ctagsPath	= "/home/nryet/Downloads/uctags-2023.04.03-linux-x86_64/bin/ctags" 			# Ctags binary path (please specify your own ctags path)
 
 # Generate directories
 shouldMake = [clonePath, tagDatePath, resultPath]
@@ -50,10 +50,10 @@ def normalize(string):
 	return ''.join(string.replace('\n', '').replace('\r', '').replace('\t', '').replace('{', '').replace('}', '').split(' ')).lower()
 
 def hashing(repoPath):
-	# This function is for hashing C/C++ functions
-	# Only consider ".c", ".cc", and ".cpp" files
-	possible = (".c", ".cc", ".cpp")
-	
+	# This function is for hashing Java functions
+	# Only consider ".java" files
+	possible = (".java")
+
 	fileCnt  = 0
 	funcCnt  = 0
 	lineCnt  = 0
@@ -67,14 +67,14 @@ def hashing(repoPath):
 			if file.endswith(possible):
 				try:
 					# Execute Ctgas command
-					functionList 	= subprocess.check_output(ctagsPath + ' -f - --kinds-C=* --fields=neKSt "' + filePath + '"', stderr=subprocess.STDOUT, shell=True).decode()
+					functionList 	= subprocess.check_output(ctagsPath + ' -f - --kinds-java=* --fields=neKSt "' + filePath + '"', stderr=subprocess.STDOUT, shell=True).decode()
 
 					f = open(filePath, 'r', encoding = "UTF-8")
 
 					# For parsing functions
 					lines 		= f.readlines()
 					allFuncs 	= str(functionList).split('\n')
-					func   		= re.compile(r'(function)')
+					func   		= re.compile(r'(method)')
 					number 		= re.compile(r'(\d+)')
 					funcSearch	= re.compile(r'{([\S\s]*)}')
 					tmpString	= ""
@@ -87,9 +87,9 @@ def hashing(repoPath):
 						elemList 	= elemList.split('\t')
 						funcBody 	= ""
 
-						if i != '' and len(elemList) >= 8 and func.fullmatch(elemList[3]):
+						if i != '' and len(elemList) >= 7 and func.fullmatch(elemList[3]):
 							funcStartLine 	 = int(number.search(elemList[4]).group(0))
-							funcEndLine 	 = int(number.search(elemList[7]).group(0))
+							funcEndLine 	 = int(number.search(elemList[6]).group(0))
 
 							tmpString	= ""
 							tmpString	= tmpString.join(lines[funcStartLine - 1 : funcEndLine])
@@ -145,71 +145,73 @@ def indexing(resDict, title, filePath):
 
 
 def main():
-	with open(gitCloneURLS, 'r', encoding = "UTF-8") as fp:
-		funcDateDict = {}
-		lines		 = [l.strip('\n\r') for l in fp.readlines()]
-		
-		for eachUrl in lines:
-			os.chdir(currentPath)
-			repoName 	= eachUrl.split("github.com/")[1].replace(".git", "").replace("/", "@@") # Replace '/' -> '@@' for convenience
-			print ("[+] Processing", repoName)
+	funcDateDict = {}
+	# lines		 = [l.strip('\n\r') for l in fp.readlines()]
+	libs = os.listdir(project_root)
+	for lib_name in libs:
+		repoName = lib_name
+		repo_full_path = os.path.join(project_root, lib_name)
+		# repoName 	= eachUrl.split("github.com/")[1].replace(".git", "").replace("/", "@@") # Replace '/' -> '@@' for convenience
+		# print ("[+] Processing", repoName)
 
-			try:
-				cloneCommand 	= eachUrl + ' ' + clonePath + repoName
-				cloneResult 	= subprocess.check_output(cloneCommand, stderr = subprocess.STDOUT, shell = True).decode()
+		try:
+			# no tag is needed, consider add lib upload time instead.
+			# Such information will be placed in a separate file
+			# cloneCommand 	= eachUrl + ' ' + clonePath + repoName
+			# cloneResult 	= subprocess.check_output(cloneCommand, stderr = subprocess.STDOUT, shell = True).decode()
 
-				os.chdir(clonePath + repoName)
+			# os.chdir(clonePath + repoName)
 
-				dateCommand 	= 'git log --tags --simplify-by-decoration --pretty="format:%ai %d"'  # For storing tag dates
-				dateResult		= subprocess.check_output(dateCommand, stderr = subprocess.STDOUT, shell = True).decode()
-				tagDateFile 	= open(tagDatePath + repoName, 'w')
-				tagDateFile.write(str(dateResult))
-				tagDateFile.close()
-
-
-				tagCommand		= "git tag"
-				tagResult		= subprocess.check_output(tagCommand, stderr = subprocess.STDOUT, shell = True).decode()
-
-				resDict = {}
-				fileCnt = 0
-				funcCnt = 0
-				lineCnt = 0
+			# dateCommand 	= 'git log --tags --simplify-by-decoration --pretty="format:%ai %d"'  # For storing tag dates
+			# dateResult		= subprocess.check_output(dateCommand, stderr = subprocess.STDOUT, shell = True).decode()
+			tagDateFile 	= open(tagDatePath + repoName, 'w')
+			# tagDateFile.write(str(dateResult))
+			# tagDateFile.close()
 
 
-				if tagResult == "":
-					# No tags, only master repo
+			# tagCommand		= "git tag"
+			# tagResult		= subprocess.check_output(tagCommand, stderr = subprocess.STDOUT, shell = True).decode()
+			tagResult = ""
+			resDict = {}
+			fileCnt = 0
+			funcCnt = 0
+			lineCnt = 0
 
+
+			if tagResult == "":
+				# No tags, only master repo
+
+				resDict, fileCnt, funcCnt, lineCnt = hashing(repo_full_path)
+				if len(resDict) > 0:
+					if not os.path.isdir(resultPath + repoName):
+						os.mkdir(resultPath + repoName)
+					title = '\t'.join([repoName, str(fileCnt), str(funcCnt), str(lineCnt)])
+					resultFilePath 	= resultPath + repoName + '/fuzzy_' + repoName + '.hidx' # Default file name: "fuzzy_OSSname.hidx"
+
+					indexing(resDict, title, resultFilePath)
+
+			else:
+				for tag in str(tagResult).split('\n'):
+					# Generate function hashes for each tag (version)
+
+					checkoutCommand	= subprocess.check_output("git checkout -f " + tag, stderr = subprocess.STDOUT, shell = True)
 					resDict, fileCnt, funcCnt, lineCnt = hashing(clonePath + repoName)
+
 					if len(resDict) > 0:
 						if not os.path.isdir(resultPath + repoName):
 							os.mkdir(resultPath + repoName)
 						title = '\t'.join([repoName, str(fileCnt), str(funcCnt), str(lineCnt)])
-						resultFilePath 	= resultPath + repoName + '/fuzzy_' + repoName + '.hidx' # Default file name: "fuzzy_OSSname.hidx"
-						
+						resultFilePath 	= resultPath + repoName + '/fuzzy_' + tag + '.hidx'
+
 						indexing(resDict, title, resultFilePath)
 
-				else:
-					for tag in str(tagResult).split('\n'):
-						# Generate function hashes for each tag (version)
 
-						checkoutCommand	= subprocess.check_output("git checkout -f " + tag, stderr = subprocess.STDOUT, shell = True)
-						resDict, fileCnt, funcCnt, lineCnt = hashing(clonePath + repoName)
-						
-						if len(resDict) > 0:
-							if not os.path.isdir(resultPath + repoName):
-								os.mkdir(resultPath + repoName)
-							title = '\t'.join([repoName, str(fileCnt), str(funcCnt), str(lineCnt)])
-							resultFilePath 	= resultPath + repoName + '/fuzzy_' + tag + '.hidx'
-						
-							indexing(resDict, title, resultFilePath)
-						
-
-			except subprocess.CalledProcessError as e:
-				print("Parser Error:", e)
-				continue
-			except Exception as e:
-				print ("Subprocess failed", e)
-				continue
+		except subprocess.CalledProcessError as e:
+			print("Parser Error:", e)
+			continue
+		except Exception as e:
+			print ("Subprocess failed", e)
+			continue
 
 """ EXECUTE """
 if __name__ == "__main__":
